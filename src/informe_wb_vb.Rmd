@@ -1,0 +1,144 @@
+---
+title: "Informe_wb_vb"
+author: "Virginia Burguete"
+date: "6 de julio de 2020"
+output:
+  pdf_document:
+    toc: yes
+    number_sections: true
+  html_document:
+    df_print: paged
+    toc: yes
+header-includes:
+- \usepackage{mathptmx}
+- \usepackage{subfig}
+- \usepackage{anyfontsize}
+- \usepackage{t1enc}
+- \usepackage{graphicx}
+- \usepackage[spanish, es-minimal]{babel}
+- \usepackage{lscape}
+- \usepackage[spanish]{babel}
+- \usepackage{booktabs}
+- \usepackage[bottom]{footmisc}
+- \usepackage{graphicx}
+- \usepackage{fancyhdr}
+- \usepackage{longtable}
+- \usepackage{multirow}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+knitr::knit_hooks$set(inline = function(x) { if (!is.numeric(x)) { x } else {prettyNum(round(x,2), big.mark = ".") } })
+```
+
+\newpage
+
+# Introducción
+En el presente trabajo, interesa analizar estadísticas poblacionales y proyecciones del banco mundial[^1]
+
+[^1]: https://www.worldbank.org/
+
+
+La estructura del informe consta del resumen, cuatro capítulos y un apéndice de cuadros. Para la aplicación del análisis cualitativo, se hace foco en el resumen y los cuatro primeros capítulos. El corpus se genera a partir de los párrafos enumerados de cada una de las secciones antes mencionadas, se descartan las cadenas de caracteres pertenecientes a notas al pie de página y a cuadros.
+
+
+# Datos
+
+## Lectura y homogeneización de los datos
+
+Para la lectura de los datos, se utiliza el paquete **pdftools**. Mediante la función _pdf\_text()_ se genera una lista con 154 elementos, cada uno de ellos representa una página del documento.
+
+
+```{r bases_kable, message=FALSE, warning=FALSE, include=FALSE}
+# Se cargan las librerías y los datos a utilizar
+# Librerías
+if (!require("knitr")) { 
+  install.packages("knitr")
+  library(knitr) 
+}
+if (!require("tidyverse")) {
+  install.packages("tidyverse")
+  library(tidyverse)
+}
+if (!require("kableExtra")) { 
+  install.packages("kableExtra")
+  library(kableExtra) 
+}
+if (!require("ggplot2")) { 
+  install.packages("ggplot2")
+  library(ggplot2) 
+}
+if (!require("readxl")) { 
+  install.packages("readxl")
+  library(readxl) 
+}
+if (!require("janitor")) { 
+  install.packages("janitor")
+  library(janitor) 
+}
+
+# Archivos descargados
+path <- file.path('..', 'data', 'externas')
+files <- list.files(path, pattern = '*.csv')
+
+# Se leen los archivos
+df <- readr::read_csv(file.path(path, files[1])) %>% 
+  janitor::clean_names()
+metadata_poblacion <- readr::read_csv(file.path(path, files[2]))
+
+```
+
+
+```{r}
+# Paises
+df_paises <- df %>% 
+  select(starts_with("country")) %>% 
+  unique() %>% 
+  filter(is.na(country_code) != TRUE,
+         !country_name %in% str_match(country_name, ".*(countries|income|demographic|World|mall\\sstates|Asia|Euro).*"),
+         !country_code %in% c("FCS", "LCN", "MEA", "NAC", "INX", "OED", "SSF", "PSE"))
+
+
+```
+
+```{r}
+# Wrangle 
+poblacion <- df %>% 
+  select(-series_code) %>% 
+  filter(country_name %in% df_paises$country_name) %>% 
+  gather(anio, valor, -(country_name:series_name)) %>% 
+  mutate(anio = as.numeric(str_sub(anio, 2, 5)),
+         valor = as.numeric(valor))
+# saveRDS(poblacion, file.path('..', 'data', 'internas', 'poblacion.rds'))
+```
+
+
+Se generan dataframes adicionales
+```{r}
+# Población por edad y sexo
+poblacion_edad_sexo <- poblacion %>% 
+  filter(series_name == str_match(series_name, "^Population\\sages.*")) %>% 
+  separate(series_name, c("rango_etario", "sexo"), sep = ", ") %>% 
+  mutate(rango_etario = str_replace_all(
+    str_replace_all(rango_etario, "Population\\sages\\s", ""),
+    "\\sand\\sabove", " y más"),
+    sexo = str_to_title(str_sub(sexo, 1, 1))) %>% 
+  filter(rango_etario != "15-64")
+# saveRDS(poblacion_edad_sexo, file.path('..', 'data', 'internas', 'poblacion_edad_sexo.rds'))
+
+# Población por lugar de residencia
+poblacion_residencia <- poblacion %>% 
+  filter(series_name == str_match(series_name, ".*population$")) %>% 
+  separate(series_name, c("zona", "descartar"), sep = " ") %>% 
+  select(-descartar)
+# saveRDS(poblacion_residencia, file.path('..', 'data', 'internas', 'poblacion_residencia.rds'))
+
+
+# Tasas
+poblacion_tasas <- poblacion %>% 
+  filter(series_name == str_match(series_name, ".*rate.*$"))
+# saveRDS(poblacion_tasas, file.path('..', 'data', 'internas', 'poblacion_tasas.rds'))
+
+```
+
+
