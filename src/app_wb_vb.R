@@ -685,7 +685,7 @@ server <- function(input, output) {
                            zona != "Urban") %>% 
                     mutate(valor = str_c(round(valor*100, 1), '%'))
         )$valor,
-        text = "Población rural",
+        text = "% Población rural",
         right_border = FALSE,
         margin_bottom = FALSE
       ))
