@@ -39,7 +39,7 @@ sidebar <- dashboardSidebar(
     menuItem("Totales poblacionales", tabName = "totales", icon = icon("line-chart", lib = "font-awesome")),
     menuItem("Proceso demográfico", tabName = "proceso", icon = icon("bar-chart", lib = "font-awesome")),
     menuItem("Pirámides poblacionales", tabName = "piramide", icon = icon("users", lib = "font-awesome")),
-    menuItem("Comparativo", tabName = "comparativo", icon = icon("clone", lib = "font-awesome"))
+    menuItem("Comparativo a UY", tabName = "comparativo", icon = icon("clone", lib = "font-awesome"))
   ))
 
 body <- dashboardBody(
@@ -218,13 +218,8 @@ body <- dashboardBody(
               column(10,
                      br(),
                      fluidRow(
-                       uiOutput("nota_piramide"),
-                       br()
-                       ),
-
-                     fluidRow(
                        br(),
-                       tabBox(title = "Pirámide poblacional",
+                       tabBox(title = "",
                               width = 12,
                               side = 'right',
                               selected = "1",
@@ -232,14 +227,33 @@ body <- dashboardBody(
                                        title = tagList(shiny::icon("bar-chart", lib = "font-awesome"), ""),
                                        column(12, 
                                               br(),
-                                              uiOutput("plot_piramide_1"))
-                              ),
+                                              fluidRow(
+                                                uiOutput("nota_piramide_1"),
+                                                br()
+                                              ),
+                                              fluidRow(
+                                                h4("Pirámide poblacional"),
+                                                uiOutput("plot_piramide_1"))
+                              )),
                               tabPanel(value = "2",
                                        title = tagList(shiny::icon("list", lib = "font-awesome"), ""),
                                        br(),
                                        column(12, 
                                               br(),
-                                              DT::dataTableOutput("tabla_piramide_1"))
+                                              fluidRow(
+                                                uiOutput("nota_piramide_2"),
+                                                br()
+                                              ),
+                                              fluidRow(
+                                                br(),
+                                                h4("Población total estimada, desagregada por sexo"),
+                                                DT::dataTableOutput("tabla_piramide_1")
+                                                ),
+                                              fluidRow(
+                                                br(),
+                                                h4("Esperanza de vida al nacer, desagregada por sexo"),
+                                                DT::dataTableOutput("tabla_piramide_2")
+                                              ))
                               ))
                      ))
             )),
@@ -279,12 +293,19 @@ body <- dashboardBody(
                        uiOutput("nota_comparativo_uru"),
                        br()
                      ),
+                     
                      fluidRow(
                        br(),
-                       uiOutput("boxPad_comparativo_uru_1"),  # población total
+                       uiOutput("boxPad_comparativo_uru_1")),  # población total
+                     fluidRow(
                        br(),
-                       uiOutput("boxPad_comparativo_uru_2"),  # zona urbana
-                       uiOutput("boxPad_comparativo_uru_3")), # zona rural
+                       column(6, uiOutput("boxPad_comparativo_uru_2.1")),  # zona urbana
+                       column(6, uiOutput("boxPad_comparativo_uru_2.2"))), # zona urbana
+                     fluidRow(
+                       br(),
+                       column(6, uiOutput("boxPad_comparativo_uru_3.1")), # zona rural
+                       column(6, uiOutput("boxPad_comparativo_uru_3.2"))  # zona rural
+                     ),
                      fluidRow(
                        br(),
                        plotOutput("plot_comparativo_uru_1", width = "100%", height = "500px"),
@@ -303,10 +324,16 @@ body <- dashboardBody(
                      
                      fluidRow(
                        br(),
-                       uiOutput("boxPad_comparativo_otro_1"),  # población total
+                       uiOutput("boxPad_comparativo_otro_1")),  # población total
+                     fluidRow(
                        br(),
-                       uiOutput("boxPad_comparativo_otro_2"),  # zona urbana
-                       uiOutput("boxPad_comparativo_otro_3")), # zona rural
+                       column(6, uiOutput("boxPad_comparativo_otro_2.1")),  # zona urbana
+                       column(6, uiOutput("boxPad_comparativo_otro_2.2"))), # zona urbana
+                     fluidRow(
+                       br(),
+                       column(6, uiOutput("boxPad_comparativo_otro_3.1")), # zona rural
+                       column(6, uiOutput("boxPad_comparativo_otro_3.2"))  # zona rural
+                     ),
                      fluidRow(
                        br(),
                        plotOutput("plot_comparativo_otro_1", width = "100%", height = "500px"),
@@ -328,11 +355,11 @@ server <- function(input, output) {
     helpText(
       h3(
         if (length(input$totales_2) == 1) {
-          str_c('Población estimada, año ', input$totales_2)
+          str_c('Población estimada para el año ', input$totales_2)
         } else if (length(input$totales_2) == 2) {
-          str_c('Población estimada, años ', input$totales_2[1], ' y ', input$totales_2[2])
+          str_c('Población estimada para los años ', input$totales_2[1], ' y ', input$totales_2[2])
         } else {
-          str_c('Población estimada, años ', input$totales_2[1], ', ', input$totales_2[2], ' y ', input$totales_2[3])
+          str_c('Población estimada para los años ', input$totales_2[1], ', ', input$totales_2[2], ' y ', input$totales_2[3])
         }
       ) 
     )
@@ -347,9 +374,10 @@ server <- function(input, output) {
   })
   
   
-  output$tabla_totales_1 <-  DT::renderDataTable({
+  output$tabla_totales_1 <- DT::renderDataTable({
     DT::datatable(
       df_totales_1(),
+      rownames = FALSE,
       filter = "top",
       options = list(
         dom = 't',
@@ -398,7 +426,6 @@ server <- function(input, output) {
                               y = valor)) +
       geom_line(aes(group = country_name,
                     colour = country_name)) +
-      # scale_y_continuous(labels=function(x) format(x, big.mark = ".", scientific = FALSE)) +
       ylim(0, max_proceso_1()) +
       labs(x = "Año", 
            y = "Población estimada", 
@@ -413,7 +440,7 @@ server <- function(input, output) {
                           aes(x = anio,
                               y = valor,
                               fill = country_name)) +
-      geom_bar(stat = "identity",
+      geom_col(position = "dodge",
                alpha = 0.7) +
       
       labs(x = "Año", 
@@ -428,16 +455,18 @@ server <- function(input, output) {
     df_proceso_1() %>% 
       data.frame() %>% 
       select(country_name, anio, valor) %>% 
-      spread(country_name, valor)
+      spread(country_name, valor) %>% 
+      mutate(anio = as.character(anio)) %>% 
+      select(`Año` = anio, everything())
   })
  
   output$tabla_proceso_1 <-  DT::renderDataTable({
     DT::datatable(
       df_proceso_2(),
       rownames = FALSE,
+      filter = "top",
       options = list(
         dom = 't',
-        searching = FALSE,
         ordering = FALSE,
         lengthChange = FALSE,
         paging = FALSE, 
@@ -446,10 +475,7 @@ server <- function(input, output) {
       DT::formatCurrency(2:(1+length(input$proceso_1)), digits = 0, currency = "", mark = ".", dec.mark =  ",")
   })
   
-  
-  
-  
-  output$nota_piramide <- renderUI({
+  nota_piramide <- reactive({
     helpText(
       h3(str_c('País: ', input$piramide_1)),
       h3(
@@ -462,6 +488,15 @@ server <- function(input, output) {
         }
       ) 
     )
+  })
+  
+
+  output$nota_piramide_1 <- renderUI({
+    nota_piramide()
+  })
+  
+  output$nota_piramide_2 <- renderUI({
+    nota_piramide()
   })
   
   df_piramide_1 <- reactive({
@@ -495,15 +530,64 @@ server <- function(input, output) {
       geom_bar(stat = "identity") +
       facet_wrap(~ anio) +
       coord_flip() +
-      scale_y_continuous(#labels = abs,
-                         limits = max_piramide_1() * c(-1,1)) +
+      scale_y_continuous(limits = max_piramide_1() * c(-1,1)) +
       xlab("Rango etario") +
       ylab("Población estimada") +
-      theme(legend.position="none",
-            axis.text = element_text(size = 10),
+      theme(axis.text = element_text(size = 10),
             axis.title = element_text(size = 10, face = "bold"))
     p_piramide_1
   })
+  
+  df_piramide_2 <- reactive({
+    df_piramide_1() %>%
+      group_by(sexo, anio) %>% 
+      summarise(valor=sum(valor)) %>% 
+      data.frame() %>% 
+      spread(anio, valor) %>% 
+      janitor::adorn_totals()
+  })
+  
+  output$tabla_piramide_1 <- DT::renderDataTable({
+    DT::datatable(
+      df_piramide_2(),
+      rownames = FALSE,
+      options = list(
+        dom = 't',
+        searching = FALSE,
+        ordering = TRUE,
+        lengthChange = FALSE,
+        paging = FALSE, 
+        scrollX = FALSE)) %>%
+      DT::formatCurrency(2:(1+length(input$piramide_2)), digits = 0, currency = "", mark = ".", dec.mark =  ",")
+  })
+  
+  df_piramide_3 <- reactive({
+    poblacion %>% 
+      filter(series_name %in% str_match(series_name, "^Life\\sexpectancy\\s.*"),
+             country_name == input$piramide_1,
+             anio %in% input$piramide_2) %>% 
+      separate(series_name, c("serie", "sexo"), sep = ", ") %>% 
+      mutate(sexo = str_to_title(str_sub(sexo, 1, 1)),
+             sexo = case_when(sexo == "T" ~ "Total",
+                              TRUE ~ sexo)) %>% 
+      select(sexo, anio, valor) %>% 
+      spread(anio, valor)
+  })
+  
+  output$tabla_piramide_2 <- DT::renderDataTable({
+    DT::datatable(
+      df_piramide_3(),
+      rownames = FALSE,
+      options = list(
+        dom = 't',
+        searching = FALSE,
+        ordering = TRUE,
+        lengthChange = FALSE,
+        paging = FALSE, 
+        scrollX = FALSE)) %>%
+      DT::formatCurrency(2:(1+length(input$piramide_2)), digits = 1, currency = "", mark = ".", dec.mark =  ",")
+  })
+  
 
   output$nota_comparativo_uru <- renderUI({
     helpText(
@@ -535,61 +619,106 @@ server <- function(input, output) {
       ))
   })
   
-  df_comparativo_2 <- reactive({
+  df_comparativo_2.1 <- reactive({
     poblacion_residencia %>% 
       filter(country_name %in% c("Uruguay", input$comparativo_1),
              anio == input$comparativo_2)
   })
   
-  output$boxPad_comparativo_uru_2 <- renderUI({
+  df_comparativo_2.2 <- reactive({
+    df_comparativo_2.1() %>% 
+      select(country_name, zona, valor) %>% 
+      spread(country_name, valor) %>% 
+      janitor::adorn_percentages("col") %>% 
+      gather(country_name, valor, -zona)
+  })
+  
+  output$boxPad_comparativo_uru_2.1 <- renderUI({
     boxPad(
       color = "gray",
       descriptionBlock(
-        header = (df_comparativo_2() %>%
+        header = (df_comparativo_2.1() %>%
                     filter(country_name == "Uruguay",
                            zona == "Urban") %>% 
                     mutate(valor =
                              format(valor,
                                     big.mark = ".", decimal.mark = ","))
         )$valor,
-        text = "Zona urbana",
+        text = "Población urbana",
+        right_border = FALSE,
+        margin_bottom = FALSE
+      ))
+  })
+  
+  output$boxPad_comparativo_uru_2.2 <- renderUI({
+    boxPad(
+      color = "gray",
+      descriptionBlock(
+        header = (df_comparativo_2.2() %>%
+                    filter(country_name == "Uruguay",
+                           zona == "Urban") %>% 
+                    mutate(valor = str_c(round(valor*100, 1), '%'))
+        )$valor,
+        text = "% Población urbana",
         right_border = FALSE,
         margin_bottom = FALSE
       ))
   })
 
-
-  output$boxPad_comparativo_uru_3 <- renderUI({
+  output$boxPad_comparativo_uru_3.1 <- renderUI({
     boxPad(
       color = "gray",
       descriptionBlock(
-        header = (df_comparativo_2() %>%
+        header = (df_comparativo_2.1() %>%
                     filter(country_name == "Uruguay",
                            zona != "Urban") %>% 
                     mutate(valor =
                              format(valor,
                                     big.mark = ".", decimal.mark = ","))
         )$valor,
-        text = "Zona rural",
+        text = "Población rural",
         right_border = FALSE,
         margin_bottom = FALSE
       ))
     })
 
-  df_comparativo_3 <- reactive({
+  output$boxPad_comparativo_uru_3.2 <- renderUI({
+    boxPad(
+      color = "gray",
+      descriptionBlock(
+        header = (df_comparativo_2.2() %>%
+                    filter(country_name == "Uruguay",
+                           zona != "Urban") %>% 
+                    mutate(valor = str_c(round(valor*100, 1), '%'))
+        )$valor,
+        text = "Población rural",
+        right_border = FALSE,
+        margin_bottom = FALSE
+      ))
+  })
+  
+  df_comparativo_3.1 <- reactive({
     poblacion_edad_sexo %>%
       filter(country_name %in% c("Uruguay", input$comparativo_1),
              anio == input$comparativo_2)
   })
   
+  df_comparativo_3.2 <- reactive({
+    df_comparativo_3.1() %>% 
+      select(country_name, zona, valor) %>% 
+      spread(country_name, valor) %>% 
+      janitor::adorn_percentages("col") %>% 
+      gather(country_name, valor, -zona)
+  })
+  
     max_comparativo_1 <- reactive({
-      max((df_comparativo_3() %>%
+      max((df_comparativo_3.1() %>%
             filter(country_name == "Uruguay"))$valor)
     })
     
 
   output$plot_comparativo_uru_1 <- renderPlot({
-    p_comparativo_1 <- ggplot(df_comparativo_3() %>% 
+    p_comparativo_1 <- ggplot(df_comparativo_3.1() %>% 
                                 filter(country_name == "Uruguay"),
                            aes(x = as.factor(rango_etario),
                                y = ifelse(test = sexo == "M",
@@ -601,8 +730,7 @@ server <- function(input, output) {
       scale_y_continuous(limits = max_comparativo_1() * c(-1,1)) +
       xlab("Rango etario") +
       ylab("Población estimada") +
-      theme(legend.position="none",
-            axis.text = element_text(size = 10),
+      theme(axis.text = element_text(size = 10),
             axis.title = element_text(size = 10, face = "bold"))
     p_comparativo_1
   })
@@ -613,57 +741,54 @@ server <- function(input, output) {
              anio == input$comparativo_2) 
   })
   
+  output$boxPad_comparativo_uru_4 <- renderUI({
+    boxPad(
+      color = "gray",
+      descriptionBlock(
+        header = (df_comparativo_4() %>%
+                    filter(country_name == "Uruguay",
+                           series_name %in% str_match(series_name, ".*Birth.*")) %>%
+                    mutate(valor = str_c(round(valor, 1), "%"))
+        )$valor,
+        text = "Tasa de natalidad",
+        right_border = FALSE,
+        margin_bottom = FALSE
+      ))
+  })
 
 
-  # output$boxPad_comparativo_uru_4 <- renderUI({
-  #   boxPad(
-  #     color = "gray",
-  #     descriptionBlock(
-  #       header = (df_comparativo_4() %>%
-  #                   filter(country_name == "Uruguay",
-  #                          series_name %in% str_match(series_name, ".*Birth.*"),) %>% 
-  #                   mutate(valor =
-  #                            format(valor,
-  #                                   big.mark = ".", decimal.mark = ","))
-  #       )$valor,
-  #       text = "Zona rural",
-  #       right_border = FALSE,
-  #       margin_bottom = FALSE
-  #     ))
-  # })
-  # 
-  # 
-  # output$boxPad_comparativo_uru_5 <- renderUI({
-  #   boxPad(
-  #     color = "gray",
-  #     descriptionBlock(
-  #       header = (datasetInput_9() %>% 
-  #                   mutate(credito = 
-  #                            format(credito, 
-  #                                   big.mark = ".", decimal.mark = ","))
-  #       )$credito, 
-  #       text = "Créditos presupuestados",
-  #       right_border = FALSE,
-  #       margin_bottom = FALSE
-  #     ))
-  # })
-  # 
-  # 
-  # output$boxPad_comparativo_uru_6 <- renderUI({
-  #   boxPad(
-  #     color = "gray",
-  #     descriptionBlock(
-  #       header = (datasetInput_9() %>% 
-  #                   mutate(credito = 
-  #                            format(credito, 
-  #                                   big.mark = ".", decimal.mark = ","))
-  #       )$credito, 
-  #       text = "Créditos presupuestados",
-  #       right_border = FALSE,
-  #       margin_bottom = FALSE
-  #     ))
-  # })
-  # 
+  output$boxPad_comparativo_uru_5 <- renderUI({
+    boxPad(
+      color = "gray",
+      descriptionBlock(
+        header = (df_comparativo_4() %>%
+                    filter(country_name == "Uruguay",
+                           series_name %in% str_match(series_name, ".*Death.*")) %>%
+                    mutate(valor = str_c(round(valor, 1), "%"))
+        )$valor,
+        text = "Tasa de mortalidad",
+        right_border = FALSE,
+        margin_bottom = FALSE
+      ))
+  })
+
+
+  output$boxPad_comparativo_uru_6 <- renderUI({
+    boxPad(
+      color = "gray",
+      descriptionBlock(
+        header = (df_comparativo_4() %>%
+                    filter(country_name == "Uruguay",
+                           series_name %in% str_match(series_name, ".*Fertility.*")) %>%
+                    mutate(valor = str_c(round(valor, 1), "%"))
+        )$valor,
+        text = "Tasa de fecundidad",
+        right_border = FALSE,
+        margin_bottom = FALSE
+      ))
+    
+  })
+
   
   output$nota_comparativo_otro <- renderUI({
     helpText(
@@ -671,7 +796,6 @@ server <- function(input, output) {
     )
   })
   
-  # 
   output$boxPad_comparativo_otro_1 <- renderUI({
     boxPad(
       color = "blue",
@@ -688,51 +812,80 @@ server <- function(input, output) {
       ))
     })
 
-
-  output$boxPad_comparativo_otro_2 <- renderUI({
+  output$boxPad_comparativo_otro_2.1 <- renderUI({
     boxPad(
       color = "gray",
       descriptionBlock(
-        header = (df_comparativo_2() %>%
+        header = (df_comparativo_2.1() %>%
                     filter(country_name != "Uruguay",
                            zona == "Urban") %>% 
                     mutate(valor =
                              format(valor,
                                     big.mark = ".", decimal.mark = ","))
         )$valor,
-        text = "Zona urbana",
+        text = "Población urbana",
         right_border = FALSE,
         margin_bottom = FALSE
       ))
   })
 
+  output$boxPad_comparativo_otro_2.2 <- renderUI({
+      boxPad(
+        color = "gray",
+        descriptionBlock(
+          header = (df_comparativo_2.2() %>%
+                      filter(country_name != "Uruguay",
+                             zona == "Urban") %>% 
+                      mutate(valor = str_c(round(valor*100, 1), '%'))
+          )$valor,
+          text = "% Población urbana",
+          right_border = FALSE,
+          margin_bottom = FALSE
+        ))
+    })
+    
 
-  output$boxPad_comparativo_otro_3 <- renderUI({
+  output$boxPad_comparativo_otro_3.1 <- renderUI({
     boxPad(
       color = "gray",
       descriptionBlock(
-        header = (df_comparativo_2() %>%
+        header = (df_comparativo_2.1() %>%
                     filter(country_name != "Uruguay",
                            zona != "Urban") %>% 
                     mutate(valor =
                              format(valor,
                                     big.mark = ".", decimal.mark = ","))
         )$valor,
-        text = "Zona rural",
+        text = "Población rural",
         right_border = FALSE,
         margin_bottom = FALSE
       ))
     
   })
-
-    max_comparativo_2 <- reactive({
-      max((df_comparativo_3() %>% 
-            filter(country_name != "Uruguay"))$valor)
-      })
+  
+  output$boxPad_comparativo_otro_3.2 <- renderUI({
+    boxPad(
+      color = "gray",
+      descriptionBlock(
+        header = (df_comparativo_2.2() %>%
+                    filter(country_name != "Uruguay",
+                           zona != "Urban") %>% 
+                    mutate(valor = str_c(round(valor*100, 1), '%'))
+        )$valor,
+        text = "% Población rural",
+        right_border = FALSE,
+        margin_bottom = FALSE
+      ))
     
-
+  })
+  
+  max_comparativo_2 <- reactive({
+      max((df_comparativo_3.1() %>% 
+            filter(country_name != "Uruguay"))$valor)
+    })
+  
   output$plot_comparativo_otro_1 <- renderPlot({
-    p_comparativo_2 <- ggplot(df_comparativo_3() %>% 
+    p_comparativo_2 <- ggplot(df_comparativo_3.1() %>% 
                                 filter(country_name != "Uruguay"),
                               aes(x = as.factor(rango_etario),
                                   y = ifelse(test = sexo == "M",
@@ -744,76 +897,59 @@ server <- function(input, output) {
       scale_y_continuous(limits = max_comparativo_2() * c(-1,1)) +
       xlab("Rango etario") +
       ylab("Población estimada") +
-      theme(legend.position="none",
-            axis.text = element_text(size = 10),
+      theme(axis.text = element_text(size = 10),
             axis.title = element_text(size = 10, face = "bold"))
     p_comparativo_2
   })
-  # 
-  # 
-  # output$boxPad_comparativo_otro_4 <- renderUI({
-  #   boxPad(
-  #     color = "gray",
-  #     descriptionBlock(
-  #       header = (datasetInput_9() %>% 
-  #                   mutate(credito = 
-  #                            format(credito, 
-  #                                   big.mark = ".", decimal.mark = ","))
-  #       )$credito, 
-  #       text = "Créditos presupuestados",
-  #       right_border = FALSE,
-  #       margin_bottom = FALSE
-  #     ))
-  # })
-  # 
-  # 
-  # output$boxPad_comparativo_otro_5 <- renderUI({
-  #   boxPad(
-  #     color = "gray",
-  #     descriptionBlock(
-  #       header = (datasetInput_9() %>% 
-  #                   mutate(credito = 
-  #                            format(credito, 
-  #                                   big.mark = ".", decimal.mark = ","))
-  #       )$credito, 
-  #       text = "Créditos presupuestados",
-  #       right_border = FALSE,
-  #       margin_bottom = FALSE
-  #     ))
-  # })
-  # 
-  # 
-  # output$boxPad_comparativo_otro_6 <- renderUI({
-  #   boxPad(
-  #     color = "gray",
-  #     descriptionBlock(
-  #       header = (datasetInput_9() %>% 
-  #                   mutate(credito = 
-  #                            format(credito, 
-  #                                   big.mark = ".", decimal.mark = ","))
-  #       )$credito, 
-  #       text = "Créditos presupuestados",
-  #       right_border = FALSE,
-  #       margin_bottom = FALSE
-  #     ))
-  # })
-  # 
-  # 
-  # output$obj_credito <- renderUI({
-  #   boxPad(
-  #     color = "gray",
-  #     descriptionBlock(
-  #       header = (datasetInput_9() %>% 
-  #                   mutate(credito = 
-  #                            format(credito, 
-  #                                   big.mark = ".", decimal.mark = ","))
-  #       )$credito, 
-  #       text = "Créditos presupuestados",
-  #       right_border = FALSE,
-  #       margin_bottom = FALSE
-  #     ))
-  # })
-  # 
+
+
+  output$boxPad_comparativo_otro_4 <- renderUI({
+    boxPad(
+      color = "gray",
+      descriptionBlock(
+        header = (df_comparativo_4() %>%
+                    filter(country_name != "Uruguay",
+                           series_name %in% str_match(series_name, ".*Birth.*")) %>%
+                    mutate(valor = str_c(round(valor, 1), "%"))
+        )$valor,
+        text = "Tasa de natalidad",
+        right_border = FALSE,
+        margin_bottom = FALSE
+      ))
+  })
+  
+
+
+  output$boxPad_comparativo_otro_5 <- renderUI({
+    boxPad(
+      color = "gray",
+      descriptionBlock(
+        header = (df_comparativo_4() %>%
+                    filter(country_name != "Uruguay",
+                           series_name %in% str_match(series_name, ".*Death.*")) %>%
+                    mutate(valor = str_c(round(valor, 1), "%"))
+        )$valor,
+        text = "Tasa de mortalidad",
+        right_border = FALSE,
+        margin_bottom = FALSE
+      ))
+  })
+
+
+  output$boxPad_comparativo_otro_6 <- renderUI({
+    boxPad(
+      color = "gray",
+      descriptionBlock(
+        header = (df_comparativo_4() %>%
+                    filter(country_name != "Uruguay",
+                           series_name %in% str_match(series_name, ".*Fertility.*")) %>%
+                    mutate(valor = str_c(round(valor, 1), "%"))
+        )$valor,
+        text = "Tasa de fecundidad",
+        right_border = FALSE,
+        margin_bottom = FALSE
+      ))
+  })
   
 }
 
