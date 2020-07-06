@@ -132,8 +132,9 @@ poblacion %>%
 poblacion$anio %>% summary
 
 ```
-En el tratamiento de los datos, se depuran continentes, regiones, grupos de países que figuran en el listado de países, además se corrigen las clases de las variables. Como resultado, se obtiene una base de información de estadísticas y proyecciones poblacionales sobre 216 países para el período 1960 - 2050. Se decide trabajar con la infomación completa, para no limitar el análisis a pocos países o períodos de tiempo reducidos.
-Por conveninencia, se generan bases auxiliares, que serán utilizadas de insumo para la app interactiva.
+En el tratamiento de los datos, se depuran continentes, regiones, grupos de países que figuran en el listado de países, para ello se utiliza el paquete **stringr**, para reconocer patrones de texto en la variable _country\_names_. Adicionalmente, se corrigen las clases de las variables (ej. se toman los valores como numéricos). Como resultado, se obtiene una base de información de estadísticas y proyecciones poblacionales sobre 216 países para el período 1960 - 2050. 
+
+Se decide trabajar con la infomación completa, para no limitar el análisis a pocos países o períodos de tiempo reducidos. Por conveninencia, se generan bases auxiliares, que serán utilizadas de insumo para la app interactiva.
 
 ```{r include=FALSE}
 ## Dataframes auxiliares:
@@ -162,11 +163,13 @@ poblacion_tasas <- poblacion %>%
 
 ```
 
+\newpage 
 
 # Resultados
 
 ## Totales poblacionales
-Se parte el análisis desde una perspectiva general, a partir de los totales poblacionales estimados para cada país en distintos momentos del tiempo. Se observa que si se elijen el primer y el último año disponible, tres países presentan rangos poblacionales estimados de entre 2,5 y 4,5 millones de habitantes, similares características a las de Uruguay, estos son, _Bosnia y Herzegovina_, _Croacia_ y _Georgia_.
+
+Se parte el análisis desde una perspectiva general, a partir de los totales poblacionales estimados para cada país en distintos momentos del tiempo. Se observa que si se elijen el primer y el último año disponible, se observan tres países con rangos poblacionales estimados de entre 2,5 y 4,5 millones de habitantes, similares características a las de Uruguay, estos son, _Bosnia y Herzegovina_, _Croacia_ y _Georgia_. 
 
 ```{r}
 df_totales_1 <- poblacion %>%
@@ -191,13 +194,16 @@ df_totales_3 %>%
   kable_styling(position = "center")
 
 ```
+
 ## Proceso demográfico
 
-De acuerdo al texto de referencia, el proceso demográfico de Uruguay inició tempranamente a principios del Siglo XX, caracterizado por una primera transición demográfica, caracterizada por un enlentecimiento en el ritmo de crecimiento poblacional y un envejecimiento de su estructura etaria, características que lo diferenciaron del resto de los los países de América Latina y el Caribe. A partir de 1985, Uruguay se sitúa en la segunda transición demográfica en donde se observa un descenso de la fecundidad hasta alcanzar valores por debajo del reemplazo poblacional. 
+De acuerdo al texto de referencia, el proceso de transición demográfico de Uruguay comenzó tempranamente a principios del Siglo XX, caracterizado por un enlentecimiento en el ritmo de crecimiento poblacional y un envejecimiento de su estructura etaria, características que lo diferenciaron del resto de los los países de América Latina y el Caribe. A partir de 1985, Uruguay se sitúa en la segunda transición demográfica en donde se observa un descenso de la fecundidad hasta alcanzar valores por debajo del reemplazo poblacional. 
 
-Para el período de estudio, no es posible reflejar la primera etapa de la transición económica uruguaya, pero si se puede apreciar, un crecimiento enlentecido en todo el período de análisis, con un claro estancamiento en los primeros años del siglo XXI. En el gráfico a continuación, se observa el proceso demográfico de Uruguay, Paraguay y Croacia. La elección de los países a los cuales comparar, se debe a que los tres países presentaban al inicio del período de estudio menos de 3 millones de habitantes, e interesa ver la relación con un país latinoamericano y uno europeo. Para el caso de Paraguay, con notorias diferencias en su tasa de crecimiento poblacional a lo largo del período. En cambio con Croacia, Uruguay presentó una tasa de crecimiento similar en las primeras décadas de estudio, a partir de 1990 Croacia cambia a una tendencia decreciente y Uruguay mantiene su crecimiento a tasas pequeñas.
+Para el período de estudio, no es posible reflejar la primera etapa de la transición demográfica uruguaya, pero si se puede apreciar, un crecimiento enlentecido a lo largo del período de análisis, con un claro estancamiento en los primeros años del siglo XXI. 
 
-```{r}
+En el gráfico a continuación, se observa el proceso demográfico de Uruguay, Paraguay y Croacia. La elección de los países a los cuales comparar, se debe a que los tres países presentaban al inicio del período de estudio menos de 3 millones de habitantes, e interesa ver la relación con un país latinoamericano y uno europeo. Para el caso de Paraguay, con notorias diferencias en su tasa de crecimiento poblacional a lo largo del período. En cambio con Croacia, Uruguay presentó una tasa de crecimiento similar en las primeras décadas de estudio, a partir de 1990 Croacia cambia a una tendencia decreciente y Uruguay mantiene su crecimiento a tasas pequeñas.
+
+```{r, echo=FALSE, fig.cap='Proceso demográfico de Uruguay, Paraguay y Croacia para el período 1965 - 2050', fig.height=3}
 df_proceso_1 <- poblacion %>%
   filter(series_name == "Population, total",
          country_name %in% c("Uruguay", "Paraguay", "Croatia"))
@@ -214,7 +220,7 @@ plot_proceso_2
 ## Comparación Uruguay con países de interés
 Se continúa el análisis, mediante la evolución de las características poblacionales de Uruguay. Para ello, se grafican las pirámides poblacionales en tres momentos del tiempo, al inicio del período de análisis (año 1960), en la actualidad (año 2020) y al final del período de estudio (año 2050). Además, se comparan los resultados con los obtenidos para Paraguay y Croacia.
 
-```{r}
+```{r, echo=FALSE, fig.cap='Pirámides poblacionales de Uruguay. Años 1960, 2020 y 2050', fig.height=3}
 # Uruguay
 df_piramide_1.1 <- poblacion_edad_sexo %>%
       filter(country_name == "Uruguay",
@@ -257,9 +263,18 @@ df_piramide_1.2 %>%
   kable_styling(position = "center")
 ```
 
-La evolución de la estructura poblacional de Uruguay, se observa claramente en el gráfico de las pirámides en tres momentos del período de análisis. Al inicio, Uruguay tenía una pirámide poblacional progresiva, ancha en la base y que se hace angosta para los rangos etarios más grandes, lo cual refleja alta natalidad y mortalidad, población jóven, con mayor proporción de población en los grupos etarios menores. Para el año 2020, la estimación de la tasa de natalidad bajó de 22,1% a 13,6%, la tasa de mortalidad disminuyó de 9,7% a 9,5% y la tasa de fecundidad cayó de 2,9% se alojó en 2%. El mayor cambio se observa en la tasa de natalidad, por lo que la base de la pirámide se reduce notoriamente. Para el año 2050, se espera que la tasa de natalidad y fecundidad sigan decreciendo hasta 10,7% y 1,8% respectivamente. Adicionalemnte, la esperanza de vida al nacer se incrementa en casi 15 años. Resulta así, una estructura poblacional envejecida. Otro dato de interés, es que se da un proceso de urbanización de la población a lo largo del período. En 1960 la población rural representaba el 19,8% de la población, mientras que las estimaciones poblacionales para 2050 indican que caería a 2,6%.
+La evolución de la estructura poblacional de Uruguay, se observa claramente en el gráfico de las pirámides en tres momentos del período de análisis. 
 
-```{r}
+En primer lugar, al inicio del período Uruguay tenía una pirámide poblacional progresiva, esto es, ancha en la base y que se hace angosta para los rangos etarios más grandes. Este tipo de pirámides refleja alta natalidad y mortalidad, población jóven, con mayor proporción de población en los grupos etarios menores.
+
+En segundo lugar, para el año 2020 la estimación de la tasa de natalidad bajó de 22,1% a 13,6%, la tasa de mortalidad disminuyó de 9,7% a 9,5% y la tasa de fecundidad cayó de 2,9% se alojó en 2%. El mayor cambio se observa en la tasa de natalidad, por lo que la base de la pirámide se reduce notoriamente. 
+
+Por último, para el año 2050 se espera que la tasa de natalidad y fecundidad sigan decreciendo hasta 10,7% y 1,8% respectivamente. 
+
+Adicionalemnte, se observa que la esperanza de vida al nacer se incrementa en casi 15 años a lo largo del período. Resulta así, una estructura poblacional envejecida. 
+Otro dato de interés, es que se da un proceso de urbanización de la población a lo largo del período. En 1960 la población rural representaba el 19,8% de la población, mientras que las estimaciones poblacionales para 2050 indican que caería a 2,6%.
+
+```{r, echo=FALSE, fig.cap='Pirámides poblacionales de Paraguay. Años 1960, 2020 y 2050', fig.height=3}
 # Paraguay
 df_piramide_2.1 <- poblacion_edad_sexo %>%
       filter(country_name == "Paraguay",
@@ -301,9 +316,11 @@ df_piramide_2.2 %>%
   kable_styling(position = "center")
 ```
 
-Para el caso de Paraguay, cómo ya se ha visto anteriormente, la evolución de su población está asociada a altas tasas de natalidad y fecundidad, 42% y 6,5% respectivamente para 1960. Las proyecciones de ambas tasas indican una caída a 20,1% y 2,4% respectivamente en 2020. La estructura progresiva se mantiene, pero los grupos etarios por debajo de los 40 años se asemejan entre si. Para 2050, se espera que las tasas sigan decreciendo, y la población se envejezca en comparación a años previos. Al igual que para Uruguay, la esperanza de vida al nacer es más alta para la población femenina que para la masculina. En el caso de Paraguay a lo largo del período, la esperanza de vida al nacer aumenta en casi 14 años, pasando de 63,88 en 1960 a estimaciones de 77,74 en 2050.
+Para el caso de Paraguay, cómo ya se ha visto anteriormente, la evolución de su población está asociada a altas tasas de natalidad y fecundidad, 42% y 6,5% respectivamente para 1960. Las proyecciones de ambas tasas indican una caída a 20,1% y 2,4% respectivamente en 2020. La estructura de la pirámide se mantiene progresiva, pero los grupos etarios por debajo de los 40 años se asemejan entre si. Para 2050, se espera que las tasas sigan decreciendo, y la población se envejezca en comparación a años previos. 
 
-```{r}
+Al igual que para Uruguay, la esperanza de vida al nacer es más alta para la población femenina que para la masculina. En el caso de Paraguay a lo largo del período, la esperanza de vida al nacer aumenta en casi 14 años, pasando de 63,88 en 1960 a estimaciones de 77,74 años en 2050.
+
+```{r, echo=FALSE, fig.cap='Pirámides poblacionales de Croacia Años 1960, 2020 y 2050', fig.height=3}
 # Croacia
 df_piramide_3.1 <- poblacion_edad_sexo %>%
       filter(country_name == "Croatia",
@@ -348,10 +365,12 @@ df_piramide_3.2 %>%
 ```
 
 
-Croacia cambió su comportamiento poblacional a lo largo de los años, pasando de una pirámide progresiva al inicio del período a una regresiva para las últimas décadas del mismo. La tasa de natalidad tuvo una caída de más de 10 puntos porcentuales en los extremos del período de estudio, la tasa de mortalidad pasó de 10% en 1960 a 13,3% en 2020 y 15,3% para 2050, mientras que la tasa de fecundidad osciló de 2,3%, 1,4% y 1,6% para los tres años mencionados. La esperanza de vida al nacer aumentó considerablemente en 18,57 años a lo largo del período. A la inversa que Uruguay, el porcentaje de población rural alcanzaba el 69,8% en 1960, se prevee una reducción a 42,4% en 2020 y se proyecta a 28,7% para finales del período de estudio.
+Croacia cambió su comportamiento poblacional a lo largo de los años, pasando de una pirámide progresiva al inicio del período a una regresiva para las últimas décadas del mismo. La tasa de natalidad tuvo una caída de más de 10 puntos porcentuales en los extremos del período de estudio, la tasa de mortalidad pasó de 10% en 1960 a 13,3% en 2020 y 15,3% para 2050, mientras que la tasa de fecundidad osciló de 2,3%, 1,4% y 1,6% para los tres años mencionados. 
+
+La esperanza de vida al nacer aumentó considerablemente en 18,57 años a lo largo del período. A la inversa que Uruguay, el porcentaje de población rural alcanzaba el 69,8% en 1960, se prevee una reducción a 42,4% en 2020 y se proyecta a 28,7% para finales del período de estudio.
 
 
 # Conclusiones
-Tal como se menciona en las notas bibliográficas de referencia, y lo pudimos comprobar con los datos sobre proyecciones poblacionales del Banco Mundial, Uruguay es un país de poca población, con bajos niveles de crecimiento, con una estructura poblacional envejecida que se acentúa a lo largo de los años. 
+Tal como se menciona en las notas bibliográficas de referencia, y se pudo corroborar en el presente trabajo a partir de los datos sobre proyecciones poblacionales del Banco Mundial, Uruguay es un país de poca población, con bajos niveles de crecimiento y estructura poblacional cada vez más envejecida. La población está altamente urbanizada, y las proyecciones indican que la proporción de la población rural va a verse fuertemente disminuída para finales del período de estudio.
 
-En este estudio, no se analiza las corrientes migratorias de los últimos tiempos, principalmente de países de Latinoamérica y el Caribe, como consecuencia de decisiones económicas, sociales y políticas de sus gobiernos. Y más recientemente de países de la región, debido a los efectos de la pandemia covid-19. Esto implicaría saldo migratorio positivo, que podría incidir en la estructura poblacional uruguaya (por ej. incrementando la tasa de fecundidad).
+La transición demográfica de Uruguay, se diferencia del comportamiento de la región. Además de las bajas tasas de natalidad y fecundidad y los valores de la esperanza de vida al nacer cada vez más alentadores, hay otras variables que influyen en este comportamiento. En este estudio, no se analizan las corrientes migratorias de los últimos tiempos, principalmente de países de Latinoamérica y el Caribe, como consecuencia de decisiones económicas, sociales y políticas de sus gobiernos. Y más recientemente de países de la región, debido a los efectos de la pandemia covid-19. Esto implicaría saldo migratorio positivo, que podría incidir en la estructura poblacional uruguaya (por ej. incrementando la tasa de fecundidad) y afectar las proyecciones vigentes.
