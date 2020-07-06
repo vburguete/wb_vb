@@ -58,6 +58,7 @@ library(shinydashboardPlus)
 
 
 # Se leen rds generados para la app en informe_wb_vb.Rmd
+poblacion <- read_rds(file.path('.', 'data', 'internas', 'poblacion.rds'))
 poblacion_edad_sexo <- read_rds(file.path('.', 'data', 'internas', 'poblacion_edad_sexo.rds'))
 poblacion_residencia <- read_rds(file.path('.', 'data', 'internas', 'poblacion_residencia.rds'))
 poblacion_tasas <- read_rds(file.path('.', 'data', 'internas', 'poblacion_tasas.rds'))
