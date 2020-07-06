@@ -23,7 +23,7 @@ anios <- (poblacion %>% select(anio) %>% unique() %>% arrange(anio))$anio
 # User Interface - UI ####
 header <- dashboardHeader(
   title = "Análisis poblacional", 
-  titleWidth = 200,
+  titleWidth = 210,
   # Incorpora logo desde la web:
   tags$li(a(href = 'https://www.rafap.com.uy/',
             img(src = "https://www.rafap.com.uy/mvdcms/plantillas/images/logo.svg",
@@ -34,7 +34,7 @@ header <- dashboardHeader(
 
 sidebar <- dashboardSidebar(
   disable = FALSE,
-  width = 200,
+  width = 210,
   sidebarMenu(
     menuItem("Totales poblacionales", tabName = "totales", icon = icon("line-chart", lib = "font-awesome")),
     menuItem("Proceso demográfico", tabName = "proceso", icon = icon("bar-chart", lib = "font-awesome")),
@@ -51,6 +51,7 @@ body <- dashboardBody(
             fluidRow(
               column(2,
                      br(),
+                     br(),
                      fluidRow(
                        gradientBox(
                          title = "Seleccionar datos:",
@@ -59,26 +60,19 @@ body <- dashboardBody(
                          collapsible = FALSE,
                          width = 12,
                          footer = list(
-                           # selectInput('totales_1',
-                           #             label = "Seleccione variable:",
-                           #             choices = c("Totales",
-                           #                         "Zona Residencia",
-                           #                         "Género",
-                           #                         "Grupo etario"), 
-                           #             selected = "Totales",
-                           #             multiple = FALSE,
-                           #             options = list(`live-search` = TRUE,
-                           #                            `none-selected-text` = "Seleccione variable")),
-
-                           pickerInput('totales_2', label = "Seleccione año(s):",
+                           pickerInput('totales_1', label = "Seleccione año(s):",
                                        choices = anios, 
-                                       selected = c(1960, 2011, 2050),
+                                       selected = c(1960, 2020, 2050),
                                        multiple = TRUE,
                                        options = list(`live-search` = TRUE,
                                                       `none-selected-text` = "Seleccione al menos un año",
                                                       `max-options` = 3,
                                                       `max-options-text` = "Máximo 3 años",
-                                                      size = 10))
+                                                      size = 10)),
+                           sliderInput("totales_2", "Seleccione rango de población (millones de habitantes):",
+                                       min = 0, max = 1700, step = 0.5,
+                                       value = c(2.5, 4.5),
+                                       sep = "")
                            
                          )))
               ),
@@ -86,27 +80,14 @@ body <- dashboardBody(
               column(10,
                      br(),
                      fluidRow(
-                       uiOutput("nota_totales"),
-                       br()
-                     ),
+                       uiOutput("nota_totales")
+                       ),
                      
                      fluidRow(
-                       br(),
-                       tabBox(title = "",
-                              width = 12,
-                              side = 'right',
-                              selected = "1",
-                              tabPanel(value = "1",
-                                       title = tagList(shiny::icon("list", lib = "font-awesome"), ""),
-                                       br(),
-                                       column(12, 
-                                              br(),
-                                              DT::dataTableOutput("tabla_totales_1"))
+                       column(12, 
+                              DT::dataTableOutput("tabla_totales_1"))
                               ))
-                     )
-              )
-            )
-            ),
+            )),
     tabItem(tabName = "proceso",
             fluidRow(
               column(2,
@@ -121,7 +102,7 @@ body <- dashboardBody(
                          footer = list(
                            pickerInput('proceso_1', label = "Seleccione país:",
                                        choices = paises, 
-                                       selected = "Uruguay",
+                                       selected = c("Uruguay", "Paraguay"),
                                        multiple = TRUE,
                                        options = list(`live-search` = TRUE,
                                                       `none-selected-text` = "Seleccione al menos un país",
@@ -131,7 +112,7 @@ body <- dashboardBody(
                            
                            sliderInput("proceso_2", "Seleccione período:",
                                        min = min(anios), max = max(anios), 
-                                       value = c(min, 2011),
+                                       value = c(min, max),
                                        sep = "")
                          )))
               ),
@@ -148,7 +129,7 @@ body <- dashboardBody(
                        tabBox(title = "Proceso demográfico",
                               width = 12,
                               side = 'right',
-                              selected = "1",
+                              selected = "2",
                               tabPanel(value = "1",
                                        title = tagList(shiny::icon("line-chart", lib = "font-awesome"), ""),
                                        column(12, 
@@ -193,7 +174,7 @@ body <- dashboardBody(
                                                       size = 10)),
                            pickerInput('piramide_2', label = "Seleccione año:",
                                        choices = anios, 
-                                       selected = c(1960, 2011, 2050),
+                                       selected = c(1960, 2020, 2050),
                                        multiple = TRUE,
                                        options = list(`live-search` = TRUE,
                                                       `none-selected-text` = "Seleccione al menos un año",
@@ -272,14 +253,14 @@ body <- dashboardBody(
                          footer = list(
                            pickerInput('comparativo_1', label = "Seleccione país:",
                                        choices = setdiff(paises, "Uruguay"), 
-                                       selected = "Croatia",
+                                       selected = "Paraguay",
                                        multiple = FALSE,
                                        options = list(`live-search` = TRUE,
                                                       `none-selected-text` = "Seleccione país",
                                                       size = 10)),
                            pickerInput('comparativo_2', label = "Seleccione año:",
                                        choices = anios, 
-                                       selected = c(2011),
+                                       selected = c(2020),
                                        multiple = FALSE,
                                        options = list(`live-search` = TRUE,
                                                       `none-selected-text` = "Seleccione año",
@@ -354,12 +335,12 @@ server <- function(input, output) {
   output$nota_totales <- renderUI({
     helpText(
       h3(
-        if (length(input$totales_2) == 1) {
-          str_c('Población estimada para el año ', input$totales_2)
-        } else if (length(input$totales_2) == 2) {
-          str_c('Población estimada para los años ', input$totales_2[1], ' y ', input$totales_2[2])
+        if (length(input$totales_1) == 1) {
+          str_c('Población estimada para el año ', input$totales_1)
+        } else if (length(input$totales_1) == 2) {
+          str_c('Población estimada para los años ', input$totales_1[1], ' y ', input$totales_1[2])
         } else {
-          str_c('Población estimada para los años ', input$totales_2[1], ', ', input$totales_2[2], ' y ', input$totales_2[3])
+          str_c('Población estimada para los años ', input$totales_1[1], ', ', input$totales_1[2], ' y ', input$totales_1[3])
         }
       ) 
     )
@@ -368,15 +349,28 @@ server <- function(input, output) {
   df_totales_1 <- reactive({
     poblacion %>%
       filter(series_name == "Population, total",
-             anio %in% input$totales_2) %>% 
+             anio %in% input$totales_1) 
+  })
+  
+  df_totales_2 <- reactive({
+    df_totales_1() %>% 
+      select(country_name, anio, valor) %>% 
+      group_by(country_name) %>% 
+      do(summarise(., min_pais = min(.$valor), max_pais = max(.$valor))) %>% 
+      filter(min_pais >= (input$totales_2[1]*1000000),
+             max_pais <= (input$totales_2[2]*1000000))
+  })
+  
+  df_totales_3 <- reactive({
+    df_totales_1() %>% 
+      filter(country_name %in% df_totales_2()$country_name) %>% 
       select(`País` = country_name, anio, valor) %>% 
       spread(anio, valor)
   })
   
-  
   output$tabla_totales_1 <- DT::renderDataTable({
     DT::datatable(
-      df_totales_1(),
+      df_totales_3(),
       rownames = FALSE,
       filter = "top",
       options = list(
@@ -385,7 +379,7 @@ server <- function(input, output) {
         lengthChange = FALSE,
         paging = FALSE, 
         scrollX = TRUE)) %>%
-      DT::formatCurrency(2:(1+length(input$totales_2)), digits = 0, currency = "", mark = ".", dec.mark =  ",")
+      DT::formatCurrency(2:(1+length(input$totales_1)), digits = 0, currency = "", mark = ".", dec.mark =  ",")
   })
   
   output$nota_proceso <- renderUI({
@@ -467,7 +461,7 @@ server <- function(input, output) {
       filter = "top",
       options = list(
         dom = 't',
-        ordering = FALSE,
+        ordering = TRUE,
         lengthChange = FALSE,
         paging = FALSE, 
         scrollX = TRUE)

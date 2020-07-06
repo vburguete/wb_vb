@@ -34,20 +34,27 @@ knitr::knit_hooks$set(inline = function(x) { if (!is.numeric(x)) { x } else {pre
 \newpage
 
 # Introducción
-En el presente trabajo, interesa analizar estadísticas poblacionales y proyecciones del banco mundial[^1]
+En el presente trabajo, se desarrollan lor principales resultados obtenidos a partir del análisis de las estadísticas y proyecciones poblacionales publicadas por el Banco Mundial[^1], para Uruguay y el resto del mundo.
+
+Como material de apoyo, se consideró el estudio _"Cambio demográfico y desafíos económicos y sociales"_ realizado en 2016 por CEPAL y Banco Mundial[^2].
+
+El análisis de los datos fue realizado con el programa **R**[^3], a través de la interfaz de usuario **RStudio**[^4], en el cual se generó una aplicación web interactiva mediante la herramienta **Shiny**[^5].
 
 [^1]: https://www.worldbank.org/
+[^2]: https://repositorio.cepal.org/bitstream/handle/11362/39862/1/S1600187_es.pdf
+[^3]: https://www.r-project.org/
+[^4]: https://rstudio.com/
+[^5]: https://shiny.rstudio.com/
 
-
-La estructura del informe consta del resumen, cuatro capítulos y un apéndice de cuadros. Para la aplicación del análisis cualitativo, se hace foco en el resumen y los cuatro primeros capítulos. El corpus se genera a partir de los párrafos enumerados de cada una de las secciones antes mencionadas, se descartan las cadenas de caracteres pertenecientes a notas al pie de página y a cuadros.
 
 
 # Datos
+## Fuentes de datos
+La fuente de información es el Banco de Datos del Banco Mundial[^6]. Se descargaron múltiples series de la base de datos de Estadísticas Poblacionales y Proyecciones, para todos los países y años disponibles.
 
-## Lectura y homogeneización de los datos
+[^6]: https://databank.worldbank.org/
 
-Para la lectura de los datos, se utiliza el paquete **pdftools**. Mediante la función _pdf\_text()_ se genera una lista con 154 elementos, cada uno de ellos representa una página del documento.
-
+## Tratamiento de los datos
 
 ```{r bases_kable, message=FALSE, warning=FALSE, include=FALSE}
 # Se cargan las librerías y los datos a utilizar
@@ -77,31 +84,33 @@ if (!require("janitor")) {
   library(janitor) 
 }
 
-# Archivos descargados
+# Archivos originales descargados
 path <- file.path('..', 'data', 'externas')
 files <- list.files(path, pattern = '*.csv')
 
-# Se leen los archivos
+# Se leen los archivos originales
 df <- readr::read_csv(file.path(path, files[1])) %>% 
   janitor::clean_names()
 metadata_poblacion <- readr::read_csv(file.path(path, files[2]))
 
 ```
 
-
-```{r}
-# Paises
+<!-- La descarga contiene regiones dentro del listado de paises, se genera df con listado correcto de países  -->
+```{r include=FALSE}
+# Países
 df_paises <- df %>% 
   select(starts_with("country")) %>% 
   unique() %>% 
+  # Se filtran continentes, regiones, grupos de países
   filter(is.na(country_code) != TRUE,
          !country_name %in% str_match(country_name, ".*(countries|income|demographic|World|mall\\sstates|Asia|Euro).*"),
          !country_code %in% c("FCS", "LCN", "MEA", "NAC", "INX", "OED", "SSF", "PSE"))
-
-
 ```
 
-```{r}
+<!--   -->
+
+```{r include=FALSE}
+
 # Wrangle 
 poblacion <- df %>% 
   select(-series_code) %>% 
@@ -110,11 +119,23 @@ poblacion <- df %>%
   mutate(anio = as.numeric(str_sub(anio, 2, 5)),
          valor = as.numeric(valor))
 # saveRDS(poblacion, file.path('..', 'data', 'internas', 'poblacion.rds'))
+
+
+# países
+poblacion %>% 
+  select(country_name) %>% 
+  unique() %>% 
+  dim
+
+# años
+poblacion$anio %>% summary
+
 ```
+En el tratamiento de los datos, se depuran continentes, regiones, grupos de países que figuran en el listado de países, además se corrigen las clases de las variables. Como resultado, se obtiene una base de información de estadísticas y proyecciones poblacionales sobre 216 países para el período 1960 - 2050. Se decide trabajar con la infomación completa, para no limitar el análisis a pocos países o períodos de tiempo reducidos.
+Por conveninencia, se generan bases auxiliares, que serán utilizadas de insumo para la app interactiva.
 
-
-Se generan dataframes adicionales
-```{r}
+```{r include=FALSE}
+## Dataframes auxiliares:
 # Población por edad y sexo
 poblacion_edad_sexo <- poblacion %>% 
   filter(series_name == str_match(series_name, "^Population\\sages.*")) %>% 
@@ -133,7 +154,6 @@ poblacion_residencia <- poblacion %>%
   select(-descartar)
 # saveRDS(poblacion_residencia, file.path('..', 'data', 'internas', 'poblacion_residencia.rds'))
 
-
 # Tasas
 poblacion_tasas <- poblacion %>% 
   filter(series_name == str_match(series_name, ".*rate.*$"))
@@ -142,3 +162,186 @@ poblacion_tasas <- poblacion %>%
 ```
 
 
+# Resultados
+
+## Totales poblacionales
+Se parte el análisis desde una perspectiva general, a partir de los totales poblacionales estimados para cada país en distintos momentos del tiempo. Se observa que si se elijen el primer y el último año disponible, tres países presentan rangos poblacionales estimados de entre 2,5 y 4,5 millones de habitantes, similares características a las de Uruguay, estos son, _Bosnia y Herzegovina_, _Croacia_ y _Georgia_.
+
+```{r}
+df_totales_1 <- poblacion %>%
+  filter(series_name == "Population, total",
+         anio %in% c(1960, 2050))
+
+df_totales_2 <- df_totales_1 %>% 
+  select(country_name, anio, valor) %>% 
+  group_by(country_name) %>% 
+  do(summarise(., min_pais = min(.$valor), max_pais = max(.$valor))) %>% 
+  filter(min_pais >= 2500000,
+         max_pais <= 4500000)
+  
+df_totales_3 <- df_totales_1 %>% 
+  filter(country_name %in% df_totales_2$country_name) %>% 
+  select(`País` = country_name, anio, valor) %>% 
+  mutate(valor = format(valor, big.mark = ".", decimal.mark = ",")) %>% 
+  spread(anio, valor)
+
+df_totales_3 %>% 
+  kable() %>% 
+  kable_styling(position = "center")
+
+```
+## Proceso demográfico
+
+De acuerdo al texto de referencia, el proceso demográfico de Uruguay inició tempranamente a principios del Siglo XX, caracterizado por una primera transición demográfica, caracterizada por un enlentecimiento en el ritmo de crecimiento poblacional y un envejecimiento de su estructura etaria, características que lo diferenciaron del resto de los los países de América Latina y el Caribe. A partir de 1985, Uruguay se sitúa en la segunda transición demográfica en donde se observa un descenso de la fecundidad hasta alcanzar valores por debajo del reemplazo poblacional. 
+
+Para el período de estudio, no es posible reflejar la primera etapa de la transición económica uruguaya, pero si se puede apreciar, un crecimiento enlentecido en todo el período de análisis, con un claro estancamiento en los primeros años del siglo XXI. A modo de ejemplo, en el gráfico a continuación se observa el proceso demográfico de Uruguay y Paraguay, con notorias diferencias en su tasa de crecimiento poblacional a lo largo del período.
+
+```{r}
+df_proceso_1 <- poblacion %>%
+  filter(series_name == "Population, total",
+         country_name %in% c("Uruguay", "Paraguay"))
+
+plot_proceso_2 <- ggplot(df_proceso_1,
+                         aes(x = anio, y = valor, fill = country_name)) +
+      geom_col(position = "dodge", alpha = 0.7) +
+  labs(x = "Año",  y = "Población estimada", fill = "") +
+      theme(axis.line = element_line())
+plot_proceso_2
+
+```
+
+## Pirámides poblacionales
+Se continúa el análisis, mediante la evolución de las características poblacionales de Uruguay. Para ello, se grafican las pirámides poblacionales en tres momentos del tiempo, al inicio del período de análisis (año 1960), en la actualidad (año 2020) y al final del período de estudio (año 2050). Además, se comparan los resultados con los obtenidos para Paraguay y Croacia.
+
+```{r}
+# Uruguay
+df_piramide_1.1 <- poblacion_edad_sexo %>%
+      filter(country_name == "Uruguay",
+             anio %in% c(1960, 2020, 2050)) %>% 
+  mutate(valor = valor/1000) 
+plot_piramide_1 <- ggplot(df_piramide_1.1,
+                          aes(x = as.factor(rango_etario),
+                              y = ifelse(test = sexo == "M",
+                                         yes = -valor,
+                                         no = valor),
+                               fill = sexo)) +
+      geom_bar(stat = "identity") +
+      facet_wrap(~ anio) +
+      coord_flip() +
+      scale_y_continuous(limits = max(df_piramide_1.1$valor) * c(-1,1)) +
+      xlab("Rango etario") +
+      ylab("Población estimada Uruguay (en miles)") +
+      theme(axis.text = element_text(size = 10),
+            axis.title = element_text(size = 10, face = "bold"))
+plot_piramide_1
+
+```
+
+Esperanza de vida al nacer de Uruguay, para los años 1960, 2020 y 2050, según sexo:
+```{r}
+df_piramide_1.2 <- poblacion %>% 
+      filter(series_name %in% str_match(series_name, "^Life\\sexpectancy\\s.*"),
+             country_name == "Uruguay",
+             anio %in% c(1960, 2020, 2050)) %>% 
+      separate(series_name, c("serie", "sexo"), sep = ", ") %>% 
+      mutate(sexo = str_to_title(str_sub(sexo, 1, 1)),
+             sexo = case_when(sexo == "T" ~ "Total",
+                              TRUE ~ sexo),
+             valor = round(valor, 2)) %>% 
+      select(sexo, anio, valor) %>% 
+      spread(anio, valor)
+
+df_piramide_1.2 %>% 
+  kable() %>% 
+  kable_styling(position = "center")
+```
+
+
+
+```{r}
+# Paraguay
+df_piramide_2.1 <- poblacion_edad_sexo %>%
+      filter(country_name == "Paraguay",
+             anio %in% c(1960, 2020, 2050)) %>% 
+  mutate(valor = valor/1000) 
+plot_piramide_2 <- ggplot(df_piramide_2.1,
+                          aes(x = as.factor(rango_etario),
+                              y = ifelse(test = sexo == "M",
+                                         yes = -valor,
+                                         no = valor),
+                               fill = sexo)) +
+      geom_bar(stat = "identity") +
+      facet_wrap(~ anio) +
+      coord_flip() +
+      scale_y_continuous(limits = max(df_piramide_2.1$valor) * c(-1,1)) +
+      xlab("Rango etario") +
+      ylab("Población estimada Paraguay (en miles)") +
+      theme(axis.text = element_text(size = 10),
+            axis.title = element_text(size = 10, face = "bold"))
+plot_piramide_2
+```
+
+Esperanza de vida al nacer de Paraguay, para los años 1960, 2020 y 2050, según sexo:
+```{r}
+
+df_piramide_2.2 <- poblacion %>% 
+      filter(series_name %in% str_match(series_name, "^Life\\sexpectancy\\s.*"),
+             country_name == "Paraguay",
+             anio %in% c(1960, 2020, 2050)) %>% 
+      separate(series_name, c("serie", "sexo"), sep = ", ") %>% 
+      mutate(sexo = str_to_title(str_sub(sexo, 1, 1)),
+             sexo = case_when(sexo == "T" ~ "Total",
+                              TRUE ~ sexo),
+             valor = round(valor, 2)) %>% 
+      select(sexo, anio, valor) %>% 
+      spread(anio, valor)
+
+df_piramide_2.2 %>% 
+  kable() %>% 
+  kable_styling(position = "center")
+```
+
+
+```{r}
+# Croacia
+df_piramide_3.1 <- poblacion_edad_sexo %>%
+      filter(country_name == "Croatia",
+             anio %in% c(1960, 2020, 2050)) %>% 
+  mutate(valor = valor/1000) 
+plot_piramide_3 <- ggplot(df_piramide_3.1,
+                          aes(x = as.factor(rango_etario),
+                              y = ifelse(test = sexo == "M",
+                                         yes = -valor,
+                                         no = valor),
+                               fill = sexo)) +
+      geom_bar(stat = "identity") +
+      facet_wrap(~ anio) +
+      coord_flip() +
+      scale_y_continuous(limits = max(df_piramide_3.1$valor) * c(-1,1)) +
+      xlab("Rango etario") +
+      ylab("Población estimada Croacia (en miles)") +
+      theme(axis.text = element_text(size = 10),
+            axis.title = element_text(size = 10, face = "bold"))
+plot_piramide_3
+```
+
+
+Esperanza de vida al nacer de Croacia, para los años 1960, 2020 y 2050, según sexo:
+```{r}
+
+df_piramide_3.2 <- poblacion %>% 
+      filter(series_name %in% str_match(series_name, "^Life\\sexpectancy\\s.*"),
+             country_name == "Croatia",
+             anio %in% c(1960, 2020, 2050)) %>% 
+      separate(series_name, c("serie", "sexo"), sep = ", ") %>% 
+      mutate(sexo = str_to_title(str_sub(sexo, 1, 1)),
+             sexo = case_when(sexo == "T" ~ "Total",
+                              TRUE ~ sexo),
+             valor = round(valor, 2)) %>% 
+      select(sexo, anio, valor) %>% 
+      spread(anio, valor)
+
+df_piramide_3.2 %>% 
+  kable() %>% 
+  kable_styling(position = "center")
+```
